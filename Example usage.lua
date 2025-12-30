@@ -1,6 +1,6 @@
-local Toba = loadstring(game:HttpGet("https://example.com/toba_library.lua"))()
+local Toba = loadstring(game:HttpGet("https://raw.githubusercontent.com/Legitxwx/TobaUI/refs/heads/main/Library.lua"))()
 
-local Window = Toba:CreateWindow("Toba Hub", {
+local Window = Toba:CreateWindow("Toba Real Hub", {
     Logo = "rbxassetid://1234567890",
     Accent = Color3.fromRGB(105, 125, 255),
     ToggleKey = Enum.KeyCode.RightShift
