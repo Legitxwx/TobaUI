@@ -1,259 +1,227 @@
--- Toba Hub Library
-local success, Toba = pcall(function()
-    local TobaHub = {}
-    TobaHub.__index = TobaHub
+if not game:IsLoaded() then game.Loaded:Wait() end
 
-    local TweenService = game:GetService("TweenService")
-    local RunService = game:GetService("RunService")
-    local UserInputService = game:GetService("UserInputService")
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+local HttpService = game:GetService("HttpService")
 
-    local function UICorner(obj,radius)
-        local c = Instance.new("UICorner",obj)
-        c.CornerRadius = UDim.new(0,radius or 12)
-    end
+local Player = Players.LocalPlayer
 
-    local function Tween(obj,props,t)
-        TweenService:Create(obj,TweenInfo.new(t or 0.3,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),props):Play()
-    end
+local TobaHub = {
+    Version = "1.0.0",
+    Settings = {
+        ReduceAnimations = false
+    }
+}
 
-    local WindowClass = {}
-    WindowClass.__index = WindowClass
+local Theme = {
+    Main = Color3.fromRGB(20,20,25),
+    Dark = Color3.fromRGB(30,30,35),
+    Accent = Color3.fromRGB(0,170,255),
+    Text = Color3.fromRGB(235,235,235),
+    Muted = Color3.fromRGB(160,160,160)
+}
 
-    function WindowClass:Create(title,options)
-        options = options or {}
-        local logoId = options.Logo or ""
-        local accent = options.Accent or Color3.fromRGB(105,125,255)
-        local toggleKey = options.ToggleKey or Enum.KeyCode.RightShift
+local Registry = {}
+local Flags = {}
+local Folder = "TobaHubConfigs"
 
-        local gui = Instance.new("ScreenGui",game.CoreGui)
-        gui.Name = title.."Gui"
-        gui.ResetOnSpawn=false
-
-        local panel = Instance.new("Frame",gui)
-        panel.Size = UDim2.fromScale(0,0)
-        panel.Position = UDim2.fromScale(0.5,0.5)
-        panel.AnchorPoint = Vector2.new(0.5,0.5)
-        panel.BackgroundColor3 = Color3.fromRGB(24,24,34)
-        panel.BorderSizePixel=0
-        UICorner(panel,25)
-
-        local gradient = Instance.new("UIGradient",panel)
-        gradient.Color = ColorSequence.new{
-            ColorSequenceKeypoint.new(0,Color3.fromRGB(32,32,48)),
-            ColorSequenceKeypoint.new(1,Color3.fromRGB(18,18,28))
-        }
-
-        Tween(panel,{Size=UDim2.fromScale(0.7,0.6)},0.5)
-
-        -- Draggable
-        local dragging,dragInput,mousePos,framePos=false,nil,nil,nil
-        local function updateDrag(input)
-            local delta=input.Position-mousePos
-            panel.Position=UDim2.new(panel.Position.X.Scale,framePos.X+delta.X,panel.Position.Y.Scale,framePos.Y+delta.Y)
-        end
-        panel.InputBegan:Connect(function(input)
-            if input.UserInputType==Enum.UserInputType.MouseButton1 then
-                dragging=true
-                mousePos=input.Position
-                framePos=panel.Position
-                input.Changed:Connect(function()
-                    if input.UserInputState==Enum.UserInputState.End then dragging=false end
-                end)
-            end
-        end)
-        panel.InputChanged:Connect(function(input)
-            if input.UserInputType==Enum.UserInputType.MouseMovement then dragInput=input end
-        end)
-        RunService.RenderStepped:Connect(function()
-            if dragging and dragInput then updateDrag(dragInput) end
-        end)
-
-        -- Logo pulse
-        if logoId~="" then
-            local logo=Instance.new("ImageLabel",panel)
-            logo.Size=UDim2.fromScale(0.15,0.15)
-            logo.Position=UDim2.fromScale(0.05,0.05)
-            logo.BackgroundTransparency=1
-            logo.Image=logoId
-            UICorner(logo,10)
-            task.spawn(function()
-                while logo.Parent do
-                    Tween(logo,{Size=UDim2.fromScale(0.17,0.17)},1)
-                    task.wait(1)
-                    Tween(logo,{Size=UDim2.fromScale(0.15,0.15)},1)
-                    task.wait(1)
-                end
-            end)
-        end
-
-        -- Tab Bar
-        local tabBar=Instance.new("Frame",panel)
-        tabBar.Size=UDim2.new(1,0,0,50)
-        tabBar.Position=UDim2.fromScale(0,0)
-        tabBar.BackgroundTransparency=1
-
-        local tabs={}
-        local pages={}
-
-        local Window={}
-        function Window:AddTab(name)
-            local tabButton=Instance.new("TextButton",tabBar)
-            tabButton.Size=UDim2.new(0,120,1,0)
-            tabButton.Position=UDim2.new(#tabs*0.17,0,0,0)
-            tabButton.Text=name
-            tabButton.Font=Enum.Font.GothamBold
-            tabButton.TextColor3=Color3.new(1,1,1)
-            tabButton.TextScaled=true
-            tabButton.BackgroundColor3=Color3.fromRGB(40,40,50)
-            UICorner(tabButton,12)
-
-            local pageFrame=Instance.new("Frame",panel)
-            pageFrame.Size=UDim2.new(1,0,1,-50)
-            pageFrame.Position=UDim2.fromScale(0,1)
-            pageFrame.BackgroundTransparency=1
-            pageFrame.Visible=false
-            pages[#tabs+1]=pageFrame
-
-            tabButton.MouseEnter:Connect(function() Tween(tabButton,{BackgroundColor3=accent},0.2) end)
-            tabButton.MouseLeave:Connect(function() Tween(tabButton,{BackgroundColor3=Color3.fromRGB(40,40,50)},0.2) end)
-            tabButton.MouseButton1Click:Connect(function()
-                for i,p in pairs(pages) do p.Visible=(p==pageFrame) end
-            end)
-
-            local TabObj={}
-            function TabObj:AddButton(text,callback)
-                local btn=Instance.new("TextButton",pageFrame)
-                btn.Size=UDim2.new(0.8,0,0,40)
-                btn.Position=UDim2.fromScale(0.1,#pageFrame:GetChildren()*0.12)
-                btn.Text=text
-                btn.Font=Enum.Font.GothamBold
-                btn.TextColor3=Color3.new(1,1,1)
-                btn.TextScaled=true
-                btn.BackgroundColor3=accent
-                UICorner(btn,12)
-                btn.MouseButton1Click:Connect(callback)
-            end
-
-            function TabObj:AddToggle(text,callback,default)
-                local toggle=Instance.new("TextButton",pageFrame)
-                toggle.Size=UDim2.new(0.8,0,0,40)
-                toggle.Position=UDim2.fromScale(0.1,#pageFrame:GetChildren()*0.12)
-                local state=default or false
-                toggle.Text=text.." : "..(state and "ON" or "OFF")
-                toggle.Font=Enum.Font.GothamBold
-                toggle.TextColor3=Color3.new(1,1,1)
-                toggle.TextScaled=true
-                toggle.BackgroundColor3=accent
-                UICorner(toggle,12)
-                toggle.MouseButton1Click:Connect(function()
-                    state=not state
-                    toggle.Text=text.." : "..(state and "ON" or "OFF")
-                    callback(state)
-                end)
-            end
-
-            function TabObj:AddSlider(text,min,max,default,callback)
-                local sliderFrame=Instance.new("Frame",pageFrame)
-                sliderFrame.Size=UDim2.new(0.8,0,0,40)
-                sliderFrame.Position=UDim2.fromScale(0.1,#pageFrame:GetChildren()*0.12)
-                sliderFrame.BackgroundColor3=Color3.fromRGB(60,60,70)
-                UICorner(sliderFrame,12)
-
-                local label=Instance.new("TextLabel",sliderFrame)
-                label.Size=UDim2.new(1,0,1,0)
-                label.BackgroundTransparency=1
-                label.TextColor3=Color3.new(1,1,1)
-                label.Font=Enum.Font.GothamBold
-                label.TextScaled=true
-                label.Text=text.." : "..tostring(default)
-
-                local mouseDown=false
-                sliderFrame.InputBegan:Connect(function(input)
-                    if input.UserInputType==Enum.UserInputType.MouseButton1 then mouseDown=true end
-                end)
-                sliderFrame.InputEnded:Connect(function(input)
-                    if input.UserInputType==Enum.UserInputType.MouseButton1 then mouseDown=false end
-                end)
-
-                RunService.RenderStepped:Connect(function()
-                    if mouseDown then
-                        local mouse=LocalPlayer:GetMouse()
-                        local pos=math.clamp((mouse.X-sliderFrame.AbsolutePosition.X)/sliderFrame.AbsoluteSize.X,0,1)
-                        local value=min+(max-min)*pos
-                        label.Text=text.." : "..string.format("%.1f",value)
-                        callback(value)
-                    end
-                end)
-            end
-
-            function TabObj:AddTextbox(placeholder,default,callback)
-                local box=Instance.new("TextBox",pageFrame)
-                box.Size=UDim2.new(0.8,0,0,40)
-                box.Position=UDim2.fromScale(0.1,#pageFrame:GetChildren()*0.12)
-                box.PlaceholderText=placeholder
-                box.Text=default or ""
-                box.Font=Enum.Font.GothamBold
-                box.TextColor3=Color3.new(1,1,1)
-                box.TextScaled=true
-                box.BackgroundColor3=accent
-                UICorner(box,12)
-                box.FocusLost:Connect(function()
-                    callback(box.Text)
-                end)
-            end
-
-            function TabObj:AddParagraph(title,text)
-                local frame=Instance.new("Frame",pageFrame)
-                frame.Size=UDim2.new(0.8,0,0,80)
-                frame.Position=UDim2.fromScale(0.1,#pageFrame:GetChildren()*0.12)
-                frame.BackgroundColor3=Color3.fromRGB(40,40,50)
-                UICorner(frame,12)
-
-                local titleLabel=Instance.new("TextLabel",frame)
-                titleLabel.Size=UDim2.new(1,0,0.3,0)
-                titleLabel.BackgroundTransparency=1
-                titleLabel.Text=title
-                titleLabel.Font=Enum.Font.GothamBold
-                titleLabel.TextColor3=Color3.new(1,1,1)
-                titleLabel.TextScaled=true
-
-                local contentLabel=Instance.new("TextLabel",frame)
-                contentLabel.Size=UDim2.new(1,0,0.7,0)
-                contentLabel.Position=UDim2.fromScale(0,0.3)
-                contentLabel.BackgroundTransparency=1
-                contentLabel.Text=text
-                contentLabel.Font=Enum.Font.Gotham
-                contentLabel.TextColor3=Color3.new(1,1,1)
-                contentLabel.TextScaled=true
-            end
-
-            tabs[#tabs+1]=tabButton
-            return TabObj
-        end
-
-        function Window:Show() panel.Visible=true end
-        function Window:Hide() panel.Visible=false end
-        function Window:Toggle() panel.Visible=not panel.Visible end
-
-        -- Keybind to toggle UI
-        UserInputService.InputBegan:Connect(function(input,gp)
-            if input.KeyCode==toggleKey and not gp then
-                Window:Toggle()
-            end
-        end)
-
-        return Window
-    end
-
-    setmetatable(TobaHub,{__call=function(_,...) return WindowClass:Create(...) end})
-    return TobaHub
-end)
-
-if not success then
-    warn("Failed to load Toba Hub")
-    return
+local function Create(c,p)
+    local i = Instance.new(c)
+    for k,v in pairs(p) do i[k]=v end
+    return i
 end
 
-return Toba
+local function Tween(o,t,p)
+    if TobaHub.Settings.ReduceAnimations then
+        for k,v in pairs(p) do o[k]=v end
+    else
+        TweenService:Create(o,TweenInfo.new(unpack(t)),p):Play()
+    end
+end
+
+function TobaHub:Notify(text,time)
+    time = time or 2
+    local g = Player.PlayerGui:FindFirstChild("TobaHub")
+    if not g then return end
+    local n = Create("TextLabel",{
+        Parent=g,
+        Size=UDim2.fromOffset(300,40),
+        Position=UDim2.fromScale(.5,.9),
+        AnchorPoint=Vector2.new(.5,.5),
+        BackgroundColor3=Theme.Accent,
+        Text=text,
+        TextColor3=Color3.new(1,1,1),
+        Font=Enum.Font.GothamBold,
+        TextSize=14,
+        BackgroundTransparency=1
+    })
+    Create("UICorner",{Parent=n,CornerRadius=UDim.new(0,10)})
+    Tween(n,{.25,Enum.EasingStyle.Quad},{BackgroundTransparency=0})
+    task.delay(time,function()
+        Tween(n,{.25,Enum.EasingStyle.Quad},{TextTransparency=1,BackgroundTransparency=1})
+        task.wait(.3)
+        n:Destroy()
+    end)
+end
+
+function TobaHub:SaveConfig(name)
+    if not isfolder(Folder) then makefolder(Folder) end
+    local d = {}
+    for f,v in pairs(Flags) do d[f]=v.Get() end
+    writefile(Folder.."/"..name..".json",HttpService:JSONEncode(d))
+end
+
+function TobaHub:LoadConfig(name)
+    local p = Folder.."/"..name..".json"
+    if not isfile(p) then return end
+    local d = HttpService:JSONDecode(readfile(p))
+    for f,v in pairs(d) do
+        if Flags[f] then Flags[f].Set(v) end
+    end
+end
+
+function TobaHub:EnableProfiler()
+    local g = Player.PlayerGui:FindFirstChild("TobaHub")
+    if not g then return end
+    local f = Create("Frame",{
+        Parent=g,
+        Size=UDim2.fromOffset(180,90),
+        Position=UDim2.fromScale(.01,.95),
+        AnchorPoint=Vector2.new(0,1),
+        BackgroundColor3=Theme.Dark
+    })
+    Create("UICorner",{Parent=f})
+    local l = Create("TextLabel",{
+        Parent=f,
+        Size=UDim2.new(1,-10,1,-10),
+        Position=UDim2.new(0,5,0,5),
+        BackgroundTransparency=1,
+        TextXAlignment=Left,
+        TextYAlignment=Top,
+        Font=Enum.Font.Code,
+        TextSize=13,
+        TextColor3=Theme.Text
+    })
+    local frames,last=0,tick()
+    RunService.RenderStepped:Connect(function()
+        frames+=1
+        if tick()-last>=1 then
+            l.Text="FPS: "..frames..
+            "\nMemory: "..math.floor(Stats:GetTotalMemoryUsageMb()).." MB"..
+            "\nElements: "..#Registry
+            frames=0
+            last=tick()
+        end
+    end)
+end
+
+function TobaHub:CreateWindow(title)
+    local gui = Create("ScreenGui",{Name="TobaHub",Parent=Player.PlayerGui,ResetOnSpawn=false})
+
+    local main = Create("Frame",{
+        Parent=gui,
+        Size=UDim2.fromOffset(540,380),
+        Position=UDim2.fromScale(.5,.5),
+        AnchorPoint=Vector2.new(.5,.5),
+        BackgroundColor3=Theme.Main
+    })
+    Create("UICorner",{Parent=main,CornerRadius=UDim.new(0,14)})
+
+    local drag,ds,sp
+    main.InputBegan:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
+            drag=true ds=i.Position sp=main.Position
+        end
+    end)
+    UIS.InputChanged:Connect(function(i)
+        if drag and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then
+            local d=i.Position-ds
+            main.Position=sp+UDim2.fromOffset(d.X,d.Y)
+        end
+    end)
+    UIS.InputEnded:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then drag=false end
+    end)
+
+    Create("TextLabel",{
+        Parent=main,
+        Size=UDim2.new(1,0,0,45),
+        Text="  "..title,
+        BackgroundTransparency=1,
+        TextColor3=Theme.Text,
+        Font=Enum.Font.GothamBold,
+        TextSize=18,
+        TextXAlignment=Left
+    })
+
+    local tabs = Create("Frame",{Parent=main,Size=UDim2.new(0,130,1,-45),Position=UDim2.new(0,0,0,45),BackgroundColor3=Theme.Dark})
+    Create("UIListLayout",{Parent=tabs,Padding=UDim.new(0,6)})
+
+    local content = Create("Frame",{Parent=main,Size=UDim2.new(1,-140,1,-55),Position=UDim2.new(0,140,0,55),BackgroundTransparency=1})
+
+    local float = Create("TextButton",{
+        Parent=gui,
+        Size=UDim2.fromOffset(48,48),
+        Position=UDim2.fromScale(.05,.5),
+        Text="⚡",
+        BackgroundColor3=Theme.Accent,
+        TextColor3=Color3.new(1,1,1),
+        Font=Enum.Font.GothamBold,
+        TextSize=22
+    })
+    Create("UICorner",{Parent=float,CornerRadius=UDim.new(1,0)})
+    float.MouseButton1Click:Connect(function() main.Visible=not main.Visible end)
+
+    local Window = {}
+
+    function Window:CreateTab(name)
+        local b = Create("TextButton",{Parent=tabs,Size=UDim2.new(1,-10,0,38),Text=name,BackgroundColor3=Theme.Main,TextColor3=Theme.Text,Font=Enum.Font.Gotham,TextSize=14})
+        Create("UICorner",{Parent=b,CornerRadius=UDim.new(0,8)})
+
+        local p = Create("ScrollingFrame",{Parent=content,Size=UDim2.new(1,0,1,0),CanvasSize=UDim2.new(0,0,0,0),ScrollBarImageTransparency=.6,BackgroundTransparency=1,Visible=false})
+        local l = Create("UIListLayout",{Parent=p,Padding=UDim.new(0,8)})
+        l:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            p.CanvasSize=UDim2.fromOffset(0,l.AbsoluteContentSize.Y+20)
+        end)
+
+        b.MouseButton1Click:Connect(function()
+            for _,v in ipairs(content:GetChildren()) do
+                if v:IsA("ScrollingFrame") then v.Visible=false end
+            end
+            p.Visible=true
+        end)
+        if #content:GetChildren()==1 then p.Visible=true end
+
+        local Tab = {}
+
+        function Tab:AddButton(text,cb)
+            local bt = Create("TextButton",{Parent=p,Size=UDim2.new(1,-10,0,42),Text=text,BackgroundColor3=Theme.Dark,TextColor3=Theme.Text,Font=Enum.Font.Gotham,TextSize=14})
+            Create("UICorner",{Parent=bt})
+            table.insert(Registry,bt)
+            bt.MouseButton1Click:Connect(cb)
+        end
+
+        function Tab:AddToggle(text,flag,def,cb)
+            local s=def
+            local t=Create("TextButton",{Parent=p,Size=UDim2.new(1,-10,0,42),Text=text..": "..(s and "ON" or "OFF"),BackgroundColor3=s and Theme.Accent or Theme.Dark,TextColor3=Theme.Text,Font=Enum.Font.Gotham,TextSize=14})
+            Create("UICorner",{Parent=t})
+            Flags[flag]={Get=function()return s end,Set=function(v)s=v t.Text=text..": "..(s and "ON" or "OFF") cb(s) end}
+            table.insert(Registry,t)
+            t.MouseButton1Click:Connect(function()
+                s=not s
+                t.Text=text..": "..(s and "ON" or "OFF")
+                Tween(t,{.2,Enum.EasingStyle.Quad},{BackgroundColor3=s and Theme.Accent or Theme.Dark})
+                cb(s)
+            end)
+        end
+
+        return Tab
+    end
+
+    return Window
+end
+
+return TobaHub
