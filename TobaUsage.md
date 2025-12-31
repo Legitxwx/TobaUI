@@ -1,6 +1,6 @@
 # Loadstring
 ```
-local TobaHub = loadstring(game:HttpGet("https://raw.githubusercontent.com/YourName/TobaHub/main/src/TobaHub.lua"
+local TobaHub = loadstring(game:HttpGet("https://raw.githubusercontent.com/Legitxwx/TobaUI/refs/heads/main/Library.lua"
 ))()
 ```
 # Window
