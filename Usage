@@ -1,0 +1,42 @@
+local UI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Legitxwx/TobaUI/refs/heads/main/Uglytoba"))()
+
+local Window = UI:CreateWindow({
+    Title = "Ultimate Script",
+    ToggleKey = Enum.KeyCode.RightShift
+})
+
+local Main = Window:CreateTab({
+    Name = "Main"
+})
+
+Main:AddToggle({
+    Text = "God Mode",
+    Flag = "god",
+    Default = false,
+    Callback = function(v)
+        print("God Mode:", v)
+    end
+})
+
+Main:AddSlider({
+    Text = "WalkSpeed",
+    Flag = "speed",
+    Min = 10,
+    Max = 100,
+    Default = 16,
+    Callback = function(v)
+        print("Speed:", v)
+    end
+})
+
+Main:AddKeybind({
+    Flag = "panic",
+    DefaultKey = Enum.KeyCode.P,
+    Callback = function()
+        print("PANIC KEY")
+    end
+})
+
+-- SAVE / LOAD
+UI:SaveConfig("MyConfig")
+UI:LoadConfig("MyConfig")
