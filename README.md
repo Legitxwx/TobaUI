@@ -6,4 +6,4 @@
 
 
 
-- **[![📄 Documentation](https://img.shields.io/badge/Documentation-green?style=for-the-badge&logo=book&logoColor=white)](https://example.com)**
+**[![📄 Documentation](https://img.shields.io/badge/Documentation-green?style=for-the-badge&logo=book&logoColor=white)](https://example.com)**
